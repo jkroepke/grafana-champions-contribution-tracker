@@ -1,14 +1,18 @@
 // ==UserScript==
-// @name         GitHub PR Persistent Status Button - Fixed Version
+// @name         Grafana Champions Contribution Tracker
 // @namespace    http://tampermonkey.net/
-// @version      2.2
-// @description  Add a persistent status button to GitHub PR pages that opens and auto-fills a Google Form (single attempt, fixed PR title)
+// @version      2.3
+// @description  Add a persistent status button to GitHub PR pages that opens and auto-fills a Google Form for Grafana Champions contribution tracking
 // @author       jkroepke
 // @match        https://github.com/*/pull/*
-// @match        https://docs.google.com/forms/d/1jXzr-B7FxUQ-5l674C4cYY6_Zhueq9ytZk40QakkqFo/*
+// @match        https://docs.google.com/forms/d/1jXzr-*/*
 // @grant        GM_openInTab
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @downloadURL  https://github.com/jkroepke/grafana-champions-contribution-tracker/raw/refs/heads/main/grafana-champions-contribution-tracker.user.js
+// @updateURL    https://github.com/jkroepke/grafana-champions-contribution-tracker/raw/refs/heads/main/grafana-champions-contribution-tracker.user.js
+// @supportURL   https://github.com/jkroepke/grafana-champions-contribution-tracker
+// @homepageURL  https://github.com/jkroepke/grafana-champions-contribution-tracker
 // ==/UserScript==
 
 (function() {
@@ -16,10 +20,10 @@
 
     // Google Form URL base
     const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/1jXzr-B7FxUQ-5l674C4cYY6_Zhueq9ytZk40QakkqFo/viewform?edit_requested=true';
-
+    
     // Storage key prefix for localStorage
     const STORAGE_PREFIX = 'github-pr-status-';
-
+    
     // Personal Information
     const PERSONAL_INFO = {
         name: 'Jan-Otto Kröpke',
@@ -61,7 +65,7 @@
         const hours = String(now.getUTCHours()).padStart(2, '0');
         const minutes = String(now.getUTCMinutes()).padStart(2, '0');
         const seconds = String(now.getUTCSeconds()).padStart(2, '0');
-
+        
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
@@ -99,7 +103,7 @@
 
         // Try multiple selectors to get PR title
         let prTitle = '';
-
+        
         // Try different selectors for PR title
         const titleSelectors = [
             'h1.gh-header-title .js-issue-title',
@@ -110,7 +114,7 @@
             'h1 span',
             '[data-hovercard-type="pull_request"] .js-issue-title'
         ];
-
+        
         for (const selector of titleSelectors) {
             const element = document.querySelector(selector);
             if (element && element.textContent.trim()) {
@@ -119,7 +123,7 @@
                 break;
             }
         }
-
+        
         // Fallback: try to get title from page title
         if (!prTitle) {
             const pageTitle = document.title;
@@ -129,7 +133,7 @@
                 console.log(`Found PR title from page title: "${prTitle}"`);
             }
         }
-
+        
         // Final fallback
         if (!prTitle) {
             prTitle = `PR #${prId.split('/').pop()}`;
@@ -142,7 +146,7 @@
         const [owner, repo, , prNumber] = prId.split(/[\/]/);
         const currentDate = getCurrentUTCDate();
         const currentDateTime = getCurrentUTCDateTime();
-
+        
         const prInfo = {
             id: prId,
             title: prTitle,  // This should now be the actual PR title
@@ -161,14 +165,14 @@
             description: prTitle,  // Use the actual PR title
             link: cleanUrl
         };
-
+        
         console.log('=== EXTRACTED PR INFO ===');
         console.log('PR ID:', prInfo.id);
         console.log('PR Title:', prInfo.title);
         console.log('PR Number:', prInfo.number);
         console.log('Description (should be title):', prInfo.description);
         console.log('Date/Time:', prInfo.dateTime);
-
+        
         return prInfo;
     }
 
@@ -188,13 +192,13 @@
     // Function to store PR info for form auto-fill with PR association
     function storePRInfoForForm(prInfo) {
         const storageKey = `github_pr_form_data_${prInfo.number}`;
-
+        
         if (typeof GM_setValue !== 'undefined') {
             GM_setValue(storageKey, JSON.stringify(prInfo));
         } else {
             localStorage.setItem(storageKey, JSON.stringify(prInfo));
         }
-
+        
         console.log(`Stored PR info for form with key: ${storageKey}`);
         console.log('Stored title:', prInfo.title);
         console.log('Stored description:', prInfo.description);
@@ -203,9 +207,9 @@
     // Function to get PR info for form auto-fill based on PR number
     function getPRInfoForForm(prNumber) {
         if (!prNumber) return null;
-
+        
         const storageKey = `github_pr_form_data_${prNumber}`;
-
+        
         try {
             let prInfo;
             if (typeof GM_getValue !== 'undefined') {
@@ -215,13 +219,13 @@
                 const stored = localStorage.getItem(storageKey);
                 prInfo = stored ? JSON.parse(stored) : null;
             }
-
+            
             if (prInfo) {
                 console.log(`Retrieved PR info for PR ${prNumber}`);
                 console.log('Retrieved title:', prInfo.title);
                 console.log('Retrieved description:', prInfo.description);
             }
-
+            
             return prInfo;
         } catch (e) {
             console.error('Error retrieving PR info:', e);
@@ -233,9 +237,9 @@
     function openGoogleForm(prInfo) {
         storePRInfoForForm(prInfo);
         const formUrlWithPR = `${GOOGLE_FORM_URL}#pr-${prInfo.number}`;
-
+        
         console.log('Opening Google Form with PR-specific URL:', formUrlWithPR);
-
+        
         if (typeof GM_openInTab !== 'undefined') {
             GM_openInTab(formUrlWithPR, { active: true });
         } else {
@@ -246,7 +250,7 @@
     // Function to find form field by question text in data-params
     function findFieldByQuestion(questionText) {
         const listItems = document.querySelectorAll('div[role="listitem"]');
-
+        
         for (const listItem of listItems) {
             try {
                 const dataParamsDiv = listItem.querySelector('div[data-params]');
@@ -257,7 +261,7 @@
                         const textInput = listItem.querySelector('input[type="text"]');
                         const dateInput = listItem.querySelector('input[type="date"]');
                         const textArea = listItem.querySelector('textarea');
-
+                        
                         const input = textInput || dateInput || textArea;
                         if (input) {
                             console.log(`✓ Found field for question: "${questionText}"`);
@@ -269,7 +273,7 @@
                 console.error('Error checking list item:', e);
             }
         }
-
+        
         console.log(`✗ No field found for question: "${questionText}"`);
         return null;
     }
@@ -277,10 +281,10 @@
     // Function to find and check "Code Review" checkbox
     function checkCodeReviewOption() {
         console.log('Looking for "Code Review" checkbox...');
-
+        
         // Find the contribution type question section
         const listItems = document.querySelectorAll('div[role="listitem"]');
-
+        
         for (const listItem of listItems) {
             try {
                 const dataParamsDiv = listItem.querySelector('div[data-params]');
@@ -288,7 +292,7 @@
                     const dataParams = dataParamsDiv.getAttribute('data-params');
                     if (dataParams && dataParams.includes('What type of contribution did you make?')) {
                         console.log('✓ Found contribution type section');
-
+                        
                         // Look for the "Code Review" checkbox using aria-label
                         const codeReviewCheckbox = listItem.querySelector('[aria-label="Code Review"][role="checkbox"]');
                         if (codeReviewCheckbox) {
@@ -303,7 +307,7 @@
                                 return true;
                             }
                         }
-
+                        
                         // Fallback: look for span containing "Code Review" text
                         const spans = listItem.querySelectorAll('span');
                         for (const span of spans) {
@@ -325,23 +329,44 @@
                 console.error('Error checking contribution type section:', e);
             }
         }
-
+        
         console.log('❌ Could not find or check "Code Review" option');
         return false;
     }
 
-    // Function to auto-fill Google Form (SINGLE ATTEMPT ONLY)
-    function autoFillGoogleForm() {
-        console.log('=== STARTING GOOGLE FORM AUTO-FILL (SINGLE ATTEMPT) ===');
+    // Function to wait for form elements to be ready
+    function waitForFormReady() {
+        return new Promise((resolve) => {
+            // Check if form elements are already present
+            const checkElements = () => {
+                const listItems = document.querySelectorAll('div[role="listitem"]');
+                const hasFormFields = listItems.length > 0;
+                
+                if (hasFormFields) {
+                    console.log('✓ Form elements detected, ready to auto-fill');
+                    resolve();
+                } else {
+                    console.log('⏳ Waiting for form elements to load...');
+                    setTimeout(checkElements, 100);
+                }
+            };
+            
+            checkElements();
+        });
+    }
 
+    // Function to auto-fill Google Form (using proper onload detection)
+    function autoFillGoogleForm() {
+        console.log('=== STARTING GOOGLE FORM AUTO-FILL ===');
+        
         const prNumber = getPRNumberFromHash();
         if (!prNumber) {
             console.log('No PR number found in URL hash, skipping auto-fill');
             return;
         }
-
+        
         console.log(`Detected PR number from hash: ${prNumber}`);
-
+        
         const prInfo = getPRInfoForForm(prNumber);
         if (!prInfo) {
             console.log(`No PR info found for PR ${prNumber}`);
@@ -352,11 +377,11 @@
         console.log('Will use PR title:', prInfo.title);
         console.log('Will use description:', prInfo.description);
 
-        // SINGLE ATTEMPT with 3 second delay
-        setTimeout(() => {
-            console.log('=== EXECUTING SINGLE AUTO-FILL ATTEMPT ===');
+        // Wait for form to be ready, then auto-fill
+        waitForFormReady().then(() => {
+            console.log('=== EXECUTING AUTO-FILL (FORM IS READY) ===');
             autoFillFormFields(prInfo);
-        }, 3000);
+        });
     }
 
     // Function to auto-fill form fields using precise targeting
@@ -364,7 +389,7 @@
         console.log(`Starting auto-fill for PR ${prInfo.number}...`);
         console.log(`Using PR Title: "${prInfo.title}"`);
         console.log(`Using Description: "${prInfo.description}"`);
-
+        
         // Define question mappings based on exact form text
         const fieldMappings = [
             {
@@ -411,11 +436,11 @@
             }
         });
 
-        // Handle checkbox for contribution type
+        // Handle checkbox for contribution type (with small delay to ensure other fields are processed)
         setTimeout(() => {
             checkCodeReviewOption();
-        }, 1000);
-
+        }, 500);
+        
         console.log(`Auto-fill completed for PR ${prInfo.number}`);
     }
 
@@ -425,13 +450,13 @@
 
         try {
             console.log(`Filling ${type} field with value: "${value}"`);
-
+            
             // Clear any existing value
             input.value = '';
-
+            
             // Focus the input first
             input.focus();
-
+            
             // Set the value
             input.value = value;
 
@@ -479,7 +504,7 @@
     // Function to apply button state
     function applyButtonState(button, isMarked) {
         const state = isMarked ? BUTTON_STATES.MARKED : BUTTON_STATES.DEFAULT;
-
+        
         button.textContent = state.text;
         button.title = state.title;
         button.style.backgroundColor = state.color;
@@ -499,7 +524,7 @@
         const isMarked = getPRState(prId);
         const button = document.createElement('button');
         button.id = 'github-pr-status-button';
-
+        
         button.style.cssText = `
             position: fixed;
             bottom: 20px;
@@ -543,11 +568,11 @@
             if (!currentPrId) return;
 
             const currentlyMarked = getPRState(currentPrId);
-
+            
             if (!currentlyMarked) {
                 setPRState(currentPrId, true);
                 applyButtonState(this, true);
-
+                
                 const prInfo = getPRInfo();
                 if (prInfo) {
                     console.log('=== BUTTON CLICKED - OPENING FORM ===');
@@ -562,7 +587,7 @@
                 applyButtonState(this, false);
                 console.log('Button clicked - marked as not reviewed');
             }
-
+            
             // Animation feedback
             this.style.transform = 'scale(0.9)';
             setTimeout(() => {
@@ -582,10 +607,12 @@
     if (isGoogleForm()) {
         const prNumber = getPRNumberFromHash();
         console.log('=== GOOGLE FORM DETECTED ===');
+        console.log('Grafana Champions Contribution Tracker v2.3');
+        console.log('Source: https://github.com/jkroepke/grafana-champions-contribution-tracker');
         console.log('Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted):', getCurrentUTCDateTime());
         console.log('Current User\'s Login:', PERSONAL_INFO.login);
         console.log(`PR number from URL hash: ${prNumber}`);
-
+        
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', autoFillGoogleForm);
         } else {
@@ -593,14 +620,16 @@
         }
     } else {
         console.log('=== GITHUB PAGE DETECTED ===');
+        console.log('Grafana Champions Contribution Tracker v2.3');
+        console.log('Source: https://github.com/jkroepke/grafana-champions-contribution-tracker');
         console.log('Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted):', getCurrentUTCDateTime());
         console.log('Current User\'s Login:', PERSONAL_INFO.login);
-
+        
         // GitHub page logic
         function updateButton() {
             const button = document.getElementById('github-pr-status-button');
             const prId = getCurrentPRId();
-
+            
             if (button && prId) {
                 const isMarked = getPRState(prId);
                 applyButtonState(button, isMarked);
@@ -608,7 +637,7 @@
         }
 
         function isPRPage() {
-            return window.location.pathname.includes('/pull/') &&
+            return window.location.pathname.includes('/pull/') && 
                    window.location.pathname.match(/\/pull\/\d+/);
         }
 
@@ -626,12 +655,12 @@
         const observer = new MutationObserver(function() {
             if (currentUrl !== window.location.href) {
                 currentUrl = window.location.href;
-
+                
                 const existingButton = document.getElementById('github-pr-status-button');
                 if (existingButton && !isPRPage()) {
                     existingButton.remove();
                 }
-
+                
                 if (isPRPage()) {
                     setTimeout(() => {
                         if (document.getElementById('github-pr-status-button')) {
@@ -659,7 +688,7 @@
             outline: 3px solid #0969da;
             outline-offset: 2px;
         }
-
+        
         #github-pr-status-button:active {
             transform: scale(0.95) !important;
         }
